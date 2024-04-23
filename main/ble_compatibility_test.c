@@ -25,6 +25,37 @@
 #include "ble_compatibility_test.h"
 #include "esp_gatt_common_api.h"
 
+#include "driver/i2c.h"
+#include "ssd1306.h"
+
+#define I2C_MASTER_SCL_IO 19               /*!< gpio number for I2C master clock */
+#define I2C_MASTER_SDA_IO 18               /*!< gpio number for I2C master data  */
+#define I2C_MASTER_NUM 0 /*!< I2C port number for master dev */
+#define I2C_MASTER_FREQ_HZ 100000        /*!< I2C master clock frequency */
+#define I2C_MASTER_TX_BUF_DISABLE 0                           /*!< I2C master doesn't need buffer */
+#define I2C_MASTER_RX_BUF_DISABLE 0                           /*!< I2C master doesn't need buffer */
+
+/**
+ * @brief i2c master initialization
+ */
+static esp_err_t i2c_master_init(void) {
+    int i2c_master_port = I2C_MASTER_NUM;
+    i2c_config_t conf = {
+        .mode = I2C_MODE_MASTER,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .sda_pullup_en = GPIO_PULLUP_ENABLE,
+        .scl_io_num = I2C_MASTER_SCL_IO,
+        .scl_pullup_en = GPIO_PULLUP_ENABLE,
+        .master.clk_speed = I2C_MASTER_FREQ_HZ,
+        // .clk_flags = 0,          /*!< Optional, you can use I2C_SCLK_SRC_FLAG_* flags to choose i2c source clock here. */
+    };
+    esp_err_t err = i2c_param_config(i2c_master_port, &conf);
+    if (err != ESP_OK) {
+        return err;
+    }
+    return i2c_driver_install(i2c_master_port, conf.mode, I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE, 0);
+}
+
 #define EXAMPLE_TAG "BLE_COMP"
 
 #define PROFILE_NUM                 1
@@ -206,7 +237,10 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
                 // the data length of gattc write  must be less than GATTS_EXAMPLE_CHAR_VAL_LEN_MAX.
                 if(gatt_db_handle_table[IDX_CHAR_VAL_A] == param->write.handle) {
                     ESP_LOGI(EXAMPLE_TAG, "len: %d", param->write.len);
-                    ESP_LOGI(EXAMPLE_TAG, "data: %.*s", param->write.len, param->write.value);
+                    char temp[20];
+                    sprintf(temp, "%.*s", param->write.len, param->write.value);
+                    ESP_LOGI(EXAMPLE_TAG, "data: %s", temp);
+                    task_ssd1306_display_text(temp);
                 }
             }
       	    break;
@@ -278,6 +312,10 @@ void app_main(void)
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK( ret );
+
+    ESP_ERROR_CHECK(i2c_master_init());
+    ssd1306_init();
+    task_ssd1306_display_clear(NULL);
 
     ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
 
