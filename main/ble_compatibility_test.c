@@ -68,11 +68,8 @@ static esp_err_t i2c_master_init(void) {
 *  the data length must be less than GATTS_EXAMPLE_CHAR_VAL_LEN_MAX.
 */
 #define GATTS_EXAMPLE_CHAR_VAL_LEN_MAX 500
-#define LONG_CHAR_VAL_LEN           500
 #define SHORT_CHAR_VAL_LEN          10
-#define GATTS_NOTIFY_FIRST_PACKET_LEN_MAX 20
 
-#define PREPARE_BUF_MAX_SIZE        1024
 #define CHAR_DECLARATION_SIZE       (sizeof(uint8_t))
 
 #define ADV_CONFIG_FLAG             (1 << 0)
@@ -138,7 +135,7 @@ static struct gatts_profile_inst lab3_profile_tab[PROFILE_NUM] = {
 
 /* Service */
 static const uint16_t GATTS_SERVICE_UUID_TEST      = 0x00FF;
-static const uint16_t CHAR_1_SHORT_WR              = 0xFF01;
+static const uint16_t CHAR_STUDENT_ID_WR              = 0xFF01;
 
 static const uint16_t primary_service_uuid         = ESP_GATT_UUID_PRI_SERVICE;
 static const uint16_t character_declaration_uuid   = ESP_GATT_UUID_CHAR_DECLARE;
@@ -155,17 +152,17 @@ static const esp_gatts_attr_db_t gatt_db[HRS_IDX_NB] =
       sizeof(uint16_t), sizeof(GATTS_SERVICE_UUID_TEST), (uint8_t *)&GATTS_SERVICE_UUID_TEST}},
 
     /* Characteristic Declaration */
-    [IDX_CHAR_A]     =
+    [IDX_CHAR_STUDENT_ID]     =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
       CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write}},
 
     /* Characteristic Value */
-    [IDX_CHAR_VAL_A] =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&CHAR_1_SHORT_WR, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE | ESP_GATT_PERM_READ_ENC_MITM,
+    [IDX_CHAR_VAL_STUDENT_ID] =
+    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&CHAR_STUDENT_ID_WR, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE | ESP_GATT_PERM_READ_ENC_MITM,
       SHORT_CHAR_VAL_LEN, 0, (uint8_t *)NULL}},
 
     /* Characteristic User Descriptor */
-    [IDX_CHAR_CFG_A]  =
+    [IDX_CHAR_CFG_STUDENT_ID]  =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_user_description, ESP_GATT_PERM_READ,
       sizeof(char_name), sizeof(char_name), (uint8_t *)char_name}},
 };
@@ -235,7 +232,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         case ESP_GATTS_WRITE_EVT:
             if (!param->write.is_prep){
                 // the data length of gattc write  must be less than GATTS_EXAMPLE_CHAR_VAL_LEN_MAX.
-                if(gatt_db_handle_table[IDX_CHAR_VAL_A] == param->write.handle) {
+                if(gatt_db_handle_table[IDX_CHAR_VAL_STUDENT_ID] == param->write.handle) {
                     ESP_LOGI(EXAMPLE_TAG, "len: %d", param->write.len);
                     char temp[20];
                     sprintf(temp, "%.*s", param->write.len, param->write.value);
