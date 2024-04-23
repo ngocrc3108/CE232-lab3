@@ -25,20 +25,12 @@
 #include "ble_compatibility_test.h"
 #include "esp_gatt_common_api.h"
 
-#define DEBUG_ON  0
-
-#if DEBUG_ON
-#define EXAMPLE_DEBUG ESP_LOGI
-#else
-#define EXAMPLE_DEBUG( tag, format, ... )
-#endif
-
 #define EXAMPLE_TAG "BLE_COMP"
 
 #define PROFILE_NUM                 1
 #define PROFILE_APP_IDX             0
 #define ESP_APP_ID                  0x55
-#define SAMPLE_DEVICE_NAME          "Ngocrc"
+#define SAMPLE_DEVICE_NAME          "Nhom 7 - lop 2"
 #define SVC_INST_ID                 0
 
 /* The max length of characteristic value. When the gatt client write or prepare write,
@@ -243,57 +235,9 @@ static const esp_gatts_attr_db_t gatt_db[HRS_IDX_NB] =
 
 };
 
-static void show_bonded_devices(void)
-{
-    int dev_num = esp_ble_get_bond_device_num();
-    if (dev_num == 0) {
-        ESP_LOGI(EXAMPLE_TAG, "Bonded devices number zero\n");
-        return;
-    }
-
-    esp_ble_bond_dev_t *dev_list = (esp_ble_bond_dev_t *)malloc(sizeof(esp_ble_bond_dev_t) * dev_num);
-    if (!dev_list) {
-        ESP_LOGE(EXAMPLE_TAG, "malloc failed, return\n");
-        return;
-    }
-    esp_ble_get_bond_device_list(&dev_num, dev_list);
-    EXAMPLE_DEBUG(EXAMPLE_TAG, "Bonded devices number : %d\n", dev_num);
-
-    EXAMPLE_DEBUG(EXAMPLE_TAG, "Bonded devices list : %d\n", dev_num);
-    for (int i = 0; i < dev_num; i++) {
-        #if DEBUG_ON
-        esp_log_buffer_hex(EXAMPLE_TAG, (void *)dev_list[i].bd_addr, sizeof(esp_bd_addr_t));
-        #endif
-    }
-
-    free(dev_list);
-}
-
-static void __attribute__((unused)) remove_all_bonded_devices(void)
-{
-    int dev_num = esp_ble_get_bond_device_num();
-    if (dev_num == 0) {
-        ESP_LOGI(EXAMPLE_TAG, "Bonded devices number zero\n");
-        return;
-    }
-
-    esp_ble_bond_dev_t *dev_list = (esp_ble_bond_dev_t *)malloc(sizeof(esp_ble_bond_dev_t) * dev_num);
-    if (!dev_list) {
-        ESP_LOGE(EXAMPLE_TAG, "malloc failed, return\n");
-        return;
-    }
-    esp_ble_get_bond_device_list(&dev_num, dev_list);
-    for (int i = 0; i < dev_num; i++) {
-        esp_ble_remove_bond_device(dev_list[i].bd_addr);
-    }
-
-    free(dev_list);
-}
-
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
     switch (event) {
-    #ifdef CONFIG_SET_RAW_ADV_DATA
         case ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT:
             adv_config_done &= (~ADV_CONFIG_FLAG);
             if (adv_config_done == 0){
@@ -306,20 +250,6 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
                 esp_ble_gap_start_advertising(&adv_params);
             }
             break;
-    #else
-        case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
-            adv_config_done &= (~ADV_CONFIG_FLAG);
-            if (adv_config_done == 0){
-                esp_ble_gap_start_advertising(&adv_params);
-            }
-            break;
-        case ESP_GAP_BLE_SCAN_RSP_DATA_SET_COMPLETE_EVT:
-            adv_config_done &= (~SCAN_RSP_CONFIG_FLAG);
-            if (adv_config_done == 0){
-                esp_ble_gap_start_advertising(&adv_params);
-            }
-            break;
-    #endif
         case ESP_GAP_BLE_ADV_START_COMPLETE_EVT:
             /* advertising start complete event to indicate advertising start successfully or failed */
             if (param->adv_start_cmpl.status != ESP_BT_STATUS_SUCCESS) {
@@ -336,62 +266,6 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
                 ESP_LOGI(EXAMPLE_TAG, "Stop adv successfully");
             }
             break;
-        case ESP_GAP_BLE_UPDATE_CONN_PARAMS_EVT:
-            EXAMPLE_DEBUG(EXAMPLE_TAG, "update connection params status = %d, min_int = %d, max_int = %d,conn_int = %d,latency = %d, timeout = %d",
-                  param->update_conn_params.status,
-                  param->update_conn_params.min_int,
-                  param->update_conn_params.max_int,
-                  param->update_conn_params.conn_int,
-                  param->update_conn_params.latency,
-                  param->update_conn_params.timeout);
-            break;
-        case ESP_GAP_BLE_PASSKEY_REQ_EVT:                           /* passkey request event */
-            EXAMPLE_DEBUG(EXAMPLE_TAG, "ESP_GAP_BLE_PASSKEY_REQ_EVT");
-            //esp_ble_passkey_reply(heart_rate_profile_tab[HEART_PROFILE_APP_IDX].remote_bda, true, 0x00);
-            break;
-
-        case ESP_GAP_BLE_NC_REQ_EVT:
-            /* The app will receive this event when the IO has DisplayYesNO capability and the peer device IO also has DisplayYesNo capability.
-            show the passkey number to the user to confirm it with the number displayed by peer device. */
-            ESP_LOGI(EXAMPLE_TAG, "ESP_GAP_BLE_NC_REQ_EVT, the passkey Notify number:%" PRIu32, param->ble_security.key_notif.passkey);
-            break;
-        case ESP_GAP_BLE_SEC_REQ_EVT:
-            /* send the positive(true) security response to the peer device to accept the security request.
-            If not accept the security request, should send the security response with negative(false) accept value*/
-            esp_ble_gap_security_rsp(param->ble_security.ble_req.bd_addr, true);
-            break;
-        case ESP_GAP_BLE_PASSKEY_NOTIF_EVT:  ///the app will receive this evt when the IO has Output capability and the peer device IO has Input capability.
-            ///show the passkey number to the user to input it in the peer device.
-            ESP_LOGI(EXAMPLE_TAG, "The passkey notify number:%06" PRIu32, param->ble_security.key_notif.passkey);
-            break;
-        case ESP_GAP_BLE_KEY_EVT:
-            //shows the ble key info share with peer device to the user.
-            EXAMPLE_DEBUG(EXAMPLE_TAG, "key type = %s", esp_key_type_to_str(param->ble_security.ble_key.key_type));
-            break;
-        case ESP_GAP_BLE_AUTH_CMPL_EVT: {
-            esp_bd_addr_t bd_addr;
-            memcpy(bd_addr, param->ble_security.auth_cmpl.bd_addr, sizeof(esp_bd_addr_t));
-            EXAMPLE_DEBUG(EXAMPLE_TAG, "remote BD_ADDR: %08x%04x",\
-                    (bd_addr[0] << 24) + (bd_addr[1] << 16) + (bd_addr[2] << 8) + bd_addr[3],
-                    (bd_addr[4] << 8) + bd_addr[5]);
-            EXAMPLE_DEBUG(EXAMPLE_TAG, "address type = %d", param->ble_security.auth_cmpl.addr_type);
-            if (param->ble_security.auth_cmpl.success){
-                ESP_LOGI(EXAMPLE_TAG, "(1) ***** pair status = success ***** ");
-            }
-            else {
-                ESP_LOGI(EXAMPLE_TAG, "***** pair status = fail, reason = 0x%x *****", param->ble_security.auth_cmpl.fail_reason);
-            }
-            show_bonded_devices();
-            break;
-        }
-        case ESP_GAP_BLE_REMOVE_BOND_DEV_COMPLETE_EVT: {
-            EXAMPLE_DEBUG(EXAMPLE_TAG, "ESP_GAP_BLE_REMOVE_BOND_DEV_COMPLETE_EVT status = %d", param->remove_bond_dev_cmpl.status);
-            #if DEBUG_ON
-            esp_log_buffer_hex(EXAMPLE_TAG, (void *)param->remove_bond_dev_cmpl.bd_addr, sizeof(esp_bd_addr_t));
-            #endif
-            EXAMPLE_DEBUG(EXAMPLE_TAG, "------------------------------------");
-            break;
-        }
         default:
             break;
     }
