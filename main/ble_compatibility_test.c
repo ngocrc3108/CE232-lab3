@@ -51,15 +51,6 @@ static uint8_t adv_config_done       = 0;
 
 uint16_t gatt_db_handle_table[HRS_IDX_NB];
 
-typedef struct {
-    uint8_t                 *prepare_buf;
-    int                     prepare_len;
-} prepare_type_env_t;
-
-static prepare_type_env_t prepare_write_env;
-
-#define CONFIG_SET_RAW_ADV_DATA
-#ifdef CONFIG_SET_RAW_ADV_DATA
 static uint8_t raw_adv_data[] = {
         /* flags */
         0x02, 0x01, 0x06,
@@ -78,48 +69,6 @@ static uint8_t raw_scan_rsp_data[] = {
         /* service uuid */
         0x03, 0x03, 0xFF,0x00
 };
-
-#else
-static uint8_t service_uuid[16] = {
-    /* LSB <--------------------------------------------------------------------------------> MSB */
-    //first uuid, 16bit, [12],[13] is the value
-    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x10, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00,
-};
-
-/* The length of adv data must be less than 31 bytes */
-static esp_ble_adv_data_t adv_data = {
-    .set_scan_rsp        = false,
-    .include_name        = true,
-    .include_txpower     = true,
-    .min_interval        = 0x20,
-    .max_interval        = 0x40,
-    .appearance          = 0x00,
-    .manufacturer_len    = 0,    //TEST_MANUFACTURER_DATA_LEN,
-    .p_manufacturer_data = NULL, //test_manufacturer,
-    .service_data_len    = 0,
-    .p_service_data      = NULL,
-    .service_uuid_len    = sizeof(service_uuid),
-    .p_service_uuid      = service_uuid,
-    .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
-};
-
-// scan response data
-static esp_ble_adv_data_t scan_rsp_data = {
-    .set_scan_rsp        = true,
-    .include_name        = true,
-    .include_txpower     = true,
-    .min_interval        = 0x20,
-    .max_interval        = 0x40,
-    .appearance          = 0x00,
-    .manufacturer_len    = 0, //TEST_MANUFACTURER_DATA_LEN,
-    .p_manufacturer_data = NULL, //&test_manufacturer[0],
-    .service_data_len    = 0,
-    .p_service_data      = NULL,
-    .service_uuid_len    = 16,
-    .p_service_uuid      = service_uuid,
-    .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
-};
-#endif /* CONFIG_SET_RAW_ADV_DATA */
 
 static esp_ble_adv_params_t adv_params = {
     .adv_int_min         = 0x40,
@@ -159,21 +108,13 @@ static struct gatts_profile_inst heart_rate_profile_tab[PROFILE_NUM] = {
 /* Service */
 static const uint16_t GATTS_SERVICE_UUID_TEST      = 0x00FF;
 static const uint16_t CHAR_1_SHORT_WR              = 0xFF01;
-static const uint16_t CHAR_2_LONG_WR               = 0xFF02;
-static const uint16_t CHAR_3_SHORT_NOTIFY          = 0xFF03;
 
 static const uint16_t primary_service_uuid         = ESP_GATT_UUID_PRI_SERVICE;
 static const uint16_t character_declaration_uuid   = ESP_GATT_UUID_CHAR_DECLARE;
-static const uint16_t character_client_config_uuid = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
 static const uint16_t character_user_description   = ESP_GATT_UUID_CHAR_DESCRIPTION;
-static const uint8_t char_prop_notify              = ESP_GATT_CHAR_PROP_BIT_NOTIFY;
 static const uint8_t char_prop_read_write          = ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_READ;
 static const uint8_t char1_name[]  = "Char_1_Short_WR";
-static const uint8_t char2_name[]  = "Char_2_Long_WR";
-static const uint8_t char3_name[]  = "Char_3_Short_Notify";
-static const uint8_t char_ccc[2]   = {0x00, 0x00};
 static const uint8_t char_value[4] = {0x11, 0x22, 0x33, 0x44};
-
 
 /* Full Database Description - Used to add attributes into the database */
 static const esp_gatts_attr_db_t gatt_db[HRS_IDX_NB] =
@@ -198,40 +139,40 @@ static const esp_gatts_attr_db_t gatt_db[HRS_IDX_NB] =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_user_description, ESP_GATT_PERM_READ,
       sizeof(char1_name), sizeof(char1_name), (uint8_t *)char1_name}},
 
-    /* Characteristic Declaration */
-    [IDX_CHAR_B]      =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
-      CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write}},
+//     /* Characteristic Declaration */
+//     [IDX_CHAR_B]      =
+//     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
+//       CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_write}},
 
-    /* Characteristic Value */
-    [IDX_CHAR_VAL_B]  =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&CHAR_2_LONG_WR, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
-      LONG_CHAR_VAL_LEN, sizeof(char_value), (uint8_t *)char_value}},
+//     /* Characteristic Value */
+//     [IDX_CHAR_VAL_B]  =
+//     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&CHAR_2_LONG_WR, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+//       LONG_CHAR_VAL_LEN, sizeof(char_value), (uint8_t *)char_value}},
 
-       /* Characteristic User Descriptor */
-    [IDX_CHAR_CFG_B]  =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_user_description, ESP_GATT_PERM_READ,
-      sizeof(char2_name), sizeof(char2_name), (uint8_t *)char2_name}},
+//        /* Characteristic User Descriptor */
+//     [IDX_CHAR_CFG_B]  =
+//     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_user_description, ESP_GATT_PERM_READ,
+//       sizeof(char2_name), sizeof(char2_name), (uint8_t *)char2_name}},
 
-   /* Characteristic Declaration */
-    [IDX_CHAR_C]      =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
-      CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_notify}},
+//    /* Characteristic Declaration */
+//     [IDX_CHAR_C]      =
+//     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
+//       CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_notify}},
 
-    /* Characteristic Value */
-    [IDX_CHAR_VAL_C]  =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&CHAR_3_SHORT_NOTIFY, 0,
-      LONG_CHAR_VAL_LEN, sizeof(char_value), (uint8_t *)char_value}},
+//     /* Characteristic Value */
+//     [IDX_CHAR_VAL_C]  =
+//     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&CHAR_3_SHORT_NOTIFY, 0,
+//       LONG_CHAR_VAL_LEN, sizeof(char_value), (uint8_t *)char_value}},
 
-    /* Characteristic User Descriptor */
-    [IDX_CHAR_CFG_C]  =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_user_description, ESP_GATT_PERM_READ,
-      sizeof(char3_name), sizeof(char3_name), (uint8_t *)char3_name}},
+//     /* Characteristic User Descriptor */
+//     [IDX_CHAR_CFG_C]  =
+//     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_user_description, ESP_GATT_PERM_READ,
+//       sizeof(char3_name), sizeof(char3_name), (uint8_t *)char3_name}},
 
-    /* Characteristic Client Configuration Descriptor */
-    [IDX_CHAR_CFG_C_2]  =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
-      sizeof(uint16_t), sizeof(char_ccc), (uint8_t *)char_ccc}},
+//     /* Characteristic Client Configuration Descriptor */
+//     [IDX_CHAR_CFG_C_2]  =
+//     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
+//       sizeof(uint16_t), sizeof(char_ccc), (uint8_t *)char_ccc}},
 
 };
 
